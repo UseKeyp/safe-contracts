@@ -123,22 +123,21 @@ contract Safe is
         bytes32 txHash;
         // Use scope here to limit variable lifetime and prevent `stack too deep` errors
         {
-            bytes memory txHashData =
-                encodeTransactionData(
-                    // Transaction info
-                    to,
-                    value,
-                    data,
-                    operation,
-                    safeTxGas,
-                    // Payment info
-                    baseGas,
-                    gasPrice,
-                    gasToken,
-                    refundReceiver,
-                    // Signature info
-                    nonce
-                );
+            bytes memory txHashData = encodeTransactionData(
+                // Transaction info
+                to,
+                value,
+                data,
+                operation,
+                safeTxGas,
+                // Payment info
+                baseGas,
+                gasPrice,
+                gasToken,
+                refundReceiver,
+                // Signature info
+                nonce
+            );
             // Increase nonce and execute transaction.
             nonce++;
             txHash = keccak256(txHashData);
@@ -218,11 +217,7 @@ contract Safe is
      * @param data That should be signed (this is passed to an external validator contract)
      * @param signatures Signature data that should be verified. Can be ECDSA signature, contract signature (EIP-1271) or approved hash.
      */
-    function checkSignatures(
-        bytes32 dataHash,
-        bytes memory data,
-        bytes memory signatures
-    ) public view {
+    function checkSignatures(bytes32 dataHash, bytes memory data, bytes memory signatures) public view {
         // Load threshold to avoid multiple storage loads
         uint256 _threshold = threshold;
         // Check that a threshold is set
@@ -237,12 +232,7 @@ contract Safe is
      * @param signatures Signature data that should be verified. Can be ECDSA signature, contract signature (EIP-1271) or approved hash.
      * @param requiredSignatures Amount of required valid signatures.
      */
-    function checkNSignatures(
-        bytes32 dataHash,
-        bytes memory data,
-        bytes memory signatures,
-        uint256 requiredSignatures
-    ) public view {
+    function checkNSignatures(bytes32 dataHash, bytes memory data, bytes memory signatures, uint256 requiredSignatures) public view {
         // Check that the provided signature data is not too short
         require(signatures.length >= requiredSignatures.mul(65), "GS020");
         // There cannot be an owner with address 0.
@@ -255,6 +245,7 @@ contract Safe is
         for (i = 0; i < requiredSignatures; i++) {
             (v, r, s) = signatureSplit(signatures, i);
             if (v == 0) {
+                require(keccak256(data) == dataHash, "GS027");
                 // If v is 0 then it is a contract signature
                 // When handling contract signatures the address of the contract is encoded into r
                 currentOwner = address(uint160(uint256(r)));
@@ -301,29 +292,6 @@ contract Safe is
             require(currentOwner > lastOwner && owners[currentOwner] != address(0) && currentOwner != SENTINEL_OWNERS, "GS026");
             lastOwner = currentOwner;
         }
-    }
-
-    /// @dev Allows to estimate a Safe transaction.
-    ///      This method is only meant for estimation purpose, therefore the call will always revert and encode the result in the revert data.
-    ///      Since the `estimateGas` function includes refunds, call this method to get an estimated of the costs that are deducted from the safe with `execTransaction`
-    /// @param to Destination address of Safe transaction.
-    /// @param value Ether value of Safe transaction.
-    /// @param data Data payload of Safe transaction.
-    /// @param operation Operation type of Safe transaction.
-    /// @return Estimate without refunds and overhead fees (base transaction and payload data gas costs).
-    /// @notice Deprecated in favor of common/StorageAccessible.sol and will be removed in next version.
-    function requiredTxGas(
-        address to,
-        uint256 value,
-        bytes calldata data,
-        Enum.Operation operation
-    ) external returns (uint256) {
-        uint256 startGas = gasleft();
-        // We don't provide an error message here, as we use it to return the estimate
-        require(execute(to, value, data, operation, gasleft()));
-        uint256 requiredGas = startGas - gasleft();
-        // Convert response to string and return via error message
-        revert(string(abi.encodePacked(requiredGas)));
     }
 
     /**
@@ -374,22 +342,21 @@ contract Safe is
         address refundReceiver,
         uint256 _nonce
     ) public view returns (bytes memory) {
-        bytes32 safeTxHash =
-            keccak256(
-                abi.encode(
-                    SAFE_TX_TYPEHASH,
-                    to,
-                    value,
-                    keccak256(data),
-                    operation,
-                    safeTxGas,
-                    baseGas,
-                    gasPrice,
-                    gasToken,
-                    refundReceiver,
-                    _nonce
-                )
-            );
+        bytes32 safeTxHash = keccak256(
+            abi.encode(
+                SAFE_TX_TYPEHASH,
+                to,
+                value,
+                keccak256(data),
+                operation,
+                safeTxGas,
+                baseGas,
+                gasPrice,
+                gasToken,
+                refundReceiver,
+                _nonce
+            )
+        );
         return abi.encodePacked(bytes1(0x19), bytes1(0x01), domainSeparator(), safeTxHash);
     }
 
